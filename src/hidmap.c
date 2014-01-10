@@ -34,6 +34,8 @@
 #define LOG(...) do {} while (0)
 #endif
 
+#define FIX_XBMC // use this to fix 20 key min bug in XBMC
+
 /* globals */
 int last_key_pressed = 0;
 
@@ -225,6 +227,10 @@ int create_input_device(void)
         return -1;
     }
 
+#ifdef FIX_XBMC
+    for(i = 0; i < KEY_MAX; ++i)
+        ret = ioctl(fd, UI_SET_KEYBIT, i);
+#else
     for(i = 0; i < KEYMAP_SIZE; ++i) {
         LOG("enabling key %hhx\n", keymap[i].output);
         ret = ioctl(fd, UI_SET_KEYBIT, keymap[i].output);
@@ -233,6 +239,7 @@ int create_input_device(void)
             return ret;
         }
     }
+#endif
 
     memset(&uidev, 0x0, sizeof(uidev));
     snprintf(uidev.name, UINPUT_MAX_NAME_SIZE, "hidmap-uinput");
