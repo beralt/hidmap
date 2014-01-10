@@ -10,6 +10,7 @@
 #include <sys/stat.h>
 #include <fcntl.h>
 #include <unistd.h>
+#include <signal.h>
 
 #include "libusb.h"
 #include <linux/input.h>
@@ -24,8 +25,14 @@
 #include "keymap.h"
 
 /* defines */
+#define DEBUG
 #define DEVVID 0x6253
 #define DEVPID 0x0100
+#ifdef DEBUG
+#define LOG(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define LOG(...) do {} while (0)
+#endif
 
 /* globals */
 int last_key_pressed = 0;
@@ -37,41 +44,83 @@ int create_input_device(void);
 int map_to_uinput(int fd, int modifier, int keycode);
 void close_input_device(int fd);
 
+void sighandler(int sig)
+{
+    //
+    return;
+}
+
+static void daemonize(void)
+{
+    pid_t pid;
+    pid = fork();
+    if(pid < 0)
+        exit(EXIT_FAILURE);
+    if(pid > 0)
+        exit(EXIT_SUCCESS);
+    if(setsid() < 0)
+        exit(EXIT_FAILURE);
+    signal(SIGCHLD, sighandler);
+    signal(SIGHUP, sighandler);
+    pid = fork();
+    if(pid < 0)
+        exit(EXIT_FAILURE);
+    if(pid > 0)
+        exit(EXIT_SUCCESS);
+    umask(0);
+    chdir("/");
+    int fd;
+    for(fd = sysconf(_SC_OPEN_MAX); fd > 0; fd--)
+        close(fd);
+    //openlog("hidmap", LOG_PID, LOG_DAEMON);
+}
+
+static void parse_cmdline(int argc, char *argv[])
+{
+    int opt;
+
+    while((opt = getopt(argc, argv, "d")) != -1) {
+        switch(opt) {
+            case 'd':
+                daemonize();
+                break;
+            default:
+                fprintf(stderr, "Usage %s [-d]\n", argv[0]);
+                exit(EXIT_FAILURE);
+        }
+    }
+}
+
 int main(int argc, char *argv[])
 {
-    int ret, ufd, len, i;
+    int ret, ufd, len;
     usbhiddev_t source = {NULL, 0, 0, 0};
     unsigned char buf[16];
+
+    parse_cmdline(argc, argv);
 
     libusb_init(NULL);
     memset(buf, 0x0, sizeof(buf));
 
     if((ret = open_source_device(&source)) < 0) {
-        fprintf(stderr, "failed to open source device: %s\n", libusb_error_name(ret));
+        LOG("failed to open source device: %s\n", libusb_error_name(ret));
         return 1;
     }
-    fprintf(stderr, "device opened: endpoint 0x%hhx\n", source.input_ep);
 
     /* setup uinput */
     ufd = create_input_device();
     if(ufd < 0) {
-        fprintf(stderr, "Failed to setup uinput: %d\n", ufd);
+        LOG("Failed to setup uinput: %d\n", ufd);
         return 1;
     }
-    fprintf(stderr, "FD uinput %d\n", ufd);
 
     /* start reading from the interrupt endpoint input */
     while(1) {
         ret = libusb_interrupt_transfer(source.handle, source.input_ep, buf, source.input_psize, &len, 1800);
         if(ret != 0) {
-            fprintf(stderr, "failed to read input interrupt endpoint: %s\n", libusb_error_name(ret));
+            LOG("failed to read input interrupt endpoint: %s\n", libusb_error_name(ret));
             return 1;
         }
-
-        fprintf(stderr, "got [%d]: ", len);
-        for(i = 0; i < len; ++i)
-            fprintf(stderr, "0x%hhx ", buf[i]);
-        fprintf(stderr,"\n");
 
         map_to_uinput(ufd, buf[0], buf[2]);
     }
@@ -89,7 +138,7 @@ int open_source_device(usbhiddev_t *dev)
 
     cnt = libusb_get_device_list(NULL, &list);
     if(cnt < 0) {
-        fprintf(stderr, "found no usb devices\n");
+        LOG("found no usb devices\n");
         return cnt;
     }
 
@@ -98,7 +147,7 @@ int open_source_device(usbhiddev_t *dev)
         if(desc.idProduct == DEVPID && desc.idVendor == DEVVID) {
             if(libusb_get_active_config_descriptor(list[i], &config) < 0) {
                 libusb_free_device_list(list, 1);
-                fprintf(stderr, "failed to get active configuration\n");
+                LOG("failed to get active configuration\n");
                 return -1;
             }
 
@@ -109,22 +158,18 @@ int open_source_device(usbhiddev_t *dev)
             }
 
             /* find the keyboard interface */
-            fprintf(stderr, "device has %d interfaces\n", config->bNumInterfaces);
             for(j = 0; j < config->bNumInterfaces; ++j) {
                 const struct libusb_interface *interface = &config->interface[j];
-                fprintf(stderr, "interface has %d alternate settings\n", interface->num_altsetting);
                 for(k = 0; k < interface->num_altsetting; ++k) {
                     const struct libusb_interface_descriptor *interface_desc = &interface->altsetting[k];
-                    fprintf(stderr, "interface description 0x%hhx\n", interface_desc->bInterfaceClass);
-                    fprintf(stderr, "interface protocol 0x%hhx\n", interface_desc->bInterfaceProtocol);
                     if(interface_desc->bInterfaceProtocol == 0x01) { // is it a keyboard?
                         if(libusb_kernel_driver_active(dev->handle, interface_desc->bInterfaceNumber) == 1) {
-                            fprintf(stderr, "keyboard interface has driver attached\n");
+                            LOG("keyboard interface has driver attached, detaching...\n");
                             if(libusb_detach_kernel_driver(dev->handle, interface_desc->bInterfaceNumber) < 0) {
                                 libusb_close(dev->handle);
                                 libusb_free_device_list(list, 1);
                                 libusb_free_config_descriptor(config);
-                                fprintf(stderr, "failed to detach kernel driver\n");
+                                LOG("failed to detach kernel driver\n");
                                 return -1;
                             }
                         }
@@ -133,11 +178,9 @@ int open_source_device(usbhiddev_t *dev)
                             libusb_close(dev->handle);
                             libusb_free_device_list(list, 1);
                             libusb_free_config_descriptor(config);
-                            fprintf(stderr, "failed to claim interface \n");
+                            LOG("failed to claim interface \n");
                             return -1;
                         }
-
-                        fprintf(stderr, "claimed interface\n");
 
                         /* setup endpoints */
                         /* had only one endpoint, hacky */
@@ -153,7 +196,7 @@ int open_source_device(usbhiddev_t *dev)
         }
     }
 
-    fprintf(stderr, "source device not found\n");
+    LOG("source device not found\n");
     return -1;
 }
 
@@ -183,7 +226,7 @@ int create_input_device(void)
     }
 
     for(i = 0; i < KEYMAP_SIZE; ++i) {
-        fprintf(stderr, "enabling key %hhx\n", keymap[i].output);
+        LOG("enabling key %hhx\n", keymap[i].output);
         ret = ioctl(fd, UI_SET_KEYBIT, keymap[i].output);
         if(ret < 0) {
             perror("Failed to set keybit on uinput");
@@ -248,7 +291,7 @@ int map_to_uinput(int fd, int modifier, int keycode)
 
     for(i = 0; i < KEYMAP_SIZE; ++i) {
         if(keymap[i].input.modifier == modifier && keymap[i].input.keycode == keycode) {
-            fprintf(stderr, "got %hhx\n", keymap[i].output);
+            LOG("got %hhx\n", keymap[i].output);
             ev.type = EV_KEY;
             ev.code = last_key_pressed = keymap[i].output;
             ev.value = 1;
@@ -266,6 +309,8 @@ int map_to_uinput(int fd, int modifier, int keycode)
             return ret;
         }
     }
+
+    LOG("had no mapping for modifier 0x%x and keycode 0x%x\n", modifier, keycode);
 
     return 0;
 }

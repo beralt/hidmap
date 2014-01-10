@@ -4,7 +4,7 @@
 
 #include "hidmap.h"
 
-#define KEYMAP_SIZE 26
+#define KEYMAP_SIZE 28
 
 struct keymap_entry_s keymap[KEYMAP_SIZE] = {
     {{0x00, 0x4c}, KEY_ESC},
@@ -36,5 +36,8 @@ struct keymap_entry_s keymap[KEYMAP_SIZE] = {
     {{0x00, 0x17}, KEY_SPACE}, // pause/play
     {{0x00, 0x11}, KEY_F}, // fast forward
     {{0x00, 0x0c}, KEY_R}, // rewind
-    {{0x00, 0x4a}, KEY_RECORD}
+    {{0x00, 0x4a}, KEY_RECORD},
+
+    {{0x02, 0x52}, KEY_VOLUMEUP},
+    {{0x02, 0x51}, KEY_VOLUMEDOWN}
 };
