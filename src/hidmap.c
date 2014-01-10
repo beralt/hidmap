@@ -119,12 +119,10 @@ int main(int argc, char *argv[])
     /* start reading from the interrupt endpoint input */
     while(1) {
         ret = libusb_interrupt_transfer(source.handle, source.input_ep, buf, source.input_psize, &len, 1800);
-        if(ret != 0) {
+        if(ret != 0)
             LOG("failed to read input interrupt endpoint: %s\n", libusb_error_name(ret));
-            return 1;
-        }
-
-        map_to_uinput(ufd, buf[0], buf[2]);
+        else
+            map_to_uinput(ufd, buf[0], buf[2]);
     }
 
     close_input_device(ufd);
