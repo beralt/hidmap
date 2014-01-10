@@ -1,0 +1,23 @@
+AC_INIT([hidmap], [1.0], [bugs@beralt.nl])
+AM_INIT_AUTOMAKE([-Wall -Werror foreign])
+
+AC_PROG_CC
+AC_LANG_C
+
+AC_PROG_MAKE_SET
+
+AC_HEADER_STDC
+
+PKG_CHECK_MODULES([LIBUSB], [libusb-1.0 >= 1.0.0])
+
+VERSION="1.0"
+AC_SUBST(VERSION)
+AC_SUBST(LIBUSB_1_0, $LIBUSB_1_0)
+AC_CONFIG_HEADERS([config.h])
+
+AC_CONFIG_FILES([
+ Makefile
+ src/Makefile
+])
+
+AC_OUTPUT
