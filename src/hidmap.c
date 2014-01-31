@@ -23,6 +23,7 @@
 
 #include "hidmap.h"
 #include "keymap.h"
+#include "systemd_xbmc.h" // in order to stop/start xbmc
 
 /* defines */
 #define DEBUG
@@ -38,6 +39,7 @@
 
 /* globals */
 int last_key_pressed = 0;
+int xbmc_status = 0; // start with xbmc off
 
 /* needed to find the device using udev */
 int open_source_device(usbhiddev_t *dev);
@@ -112,8 +114,13 @@ int main(int argc, char *argv[])
     /* setup uinput */
     ufd = create_input_device();
     if(ufd < 0) {
-        LOG("Failed to setup uinput: %d\n", ufd);
+        LOG("failed to setup uinput: %d\n", ufd);
         return 1;
+    }
+
+    /* init dbus stuff */
+    if((ret = systemd_xbmc_init()) < 0) {
+        LOG("failed to initialize dbus/systemd, power key will not start stop XBMC\n");
     }
 
     /* start reading from the interrupt endpoint input */
@@ -209,19 +216,19 @@ int create_input_device(void)
     fd = open("/dev/uinput", O_WRONLY|O_NONBLOCK);
 
     if(fd < 0) {
-        perror("Failed to open uinput");
+        perror("failed to open uinput");
         return fd;
     }
 
     ret = ioctl(fd, UI_SET_EVBIT, EV_KEY);
     if(ret < 0) {
-        perror("Failed to set EV_KEY on uinput");
+        perror("failed to set EV_KEY on uinput");
         return -1;
     }
 
     ret = ioctl(fd, UI_SET_EVBIT, EV_SYN);
     if(ret < 0) {
-        perror("Failed to set EV_SYN on uinput");
+        perror("failed to set EV_SYN on uinput");
         return -1;
     }
 
@@ -233,7 +240,7 @@ int create_input_device(void)
         LOG("enabling key %hhx\n", keymap[i].output);
         ret = ioctl(fd, UI_SET_KEYBIT, keymap[i].output);
         if(ret < 0) {
-            perror("Failed to set keybit on uinput");
+            perror("failed to set keybit on uinput");
             return ret;
         }
     }
@@ -248,13 +255,13 @@ int create_input_device(void)
 
     ret = write(fd, &uidev, sizeof(uidev));
     if(ret < 0) {
-        perror("Failed to write uinput device descriptor");
+        perror("failed to write uinput device descriptor");
         return -1;
     }
 
     ret = ioctl(fd, UI_DEV_CREATE);
     if(ret < 0) {
-        perror("Failed to ioctl UI_DEV_CREATE");
+        perror("failed to ioctl UI_DEV_CREATE");
         return -1;
     }
         
@@ -290,6 +297,27 @@ int map_to_uinput(int fd, int modifier, int keycode)
             /* this happens all the time */
             return 0;
         }
+    }
+
+    /* some keycodes are trapped here (i.e. the power button) */
+    if(keycode == 0x3f && modifier == 0x5) {
+        /* start/stop XBMC */
+        if(xbmc_status > 0) {
+            LOG("stopping XBMC\n");
+            if(systemd_xbmc_stop() < 0) {
+                LOG("failed to stop XBMC\n");
+                return -1;
+            }
+            xbmc_status = 0;
+        } else {
+            LOG("starting XBMC\n");
+            if(systemd_xbmc_start() < 0) {
+                LOG("failed to start XBMC\n");
+                return -1;
+            }
+            xbmc_status = 1;
+        }
+        return 0;
     }
 
     memset(&ev, 0x0, sizeof(ev));
