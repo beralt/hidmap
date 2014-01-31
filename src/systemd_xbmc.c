@@ -50,9 +50,6 @@ int systemd_xbmc_init(void)
 
 int systemd_xbmc_start(void)
 {
-    fprintf(stderr, "Would start XBMC\n");
-    return 0;
-
     DBusMessage *msg, *response;
     DBusError err;
 
