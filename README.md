@@ -3,6 +3,10 @@ HIDMAP
 
 This small utility allows the use of HID USB devices without any kernel driver. To do so it uses a user-space driver with the help of libusb(x). It detaches existing kernel drivers.
 
+Additional features included are HDMI link on/off functionality through the Broadcom VideoCore library. This functionality is based on the userland utilities (i.e. tvservice) provided by the Raspberry Pi people (thanks!). It expects the libraries in /opt/vc, which is default as far as I know.
+
+I also added some XBMC start/stop functions using a DBus interface to systemd.
+
 Why?
 ----
 
