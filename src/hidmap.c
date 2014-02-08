@@ -25,6 +25,11 @@
 #include "keymap.h"
 #include "systemd_xbmc.h" // in order to stop/start xbmc
 
+/* optional stuff for turning HDMI link on/off */
+#ifdef HAVE_LIBBCM_HOST
+#include "vc_tvservice.h"
+#endif
+
 /* defines */
 #define DEBUG
 #define DEVVID 0x6253
@@ -123,6 +128,11 @@ int main(int argc, char *argv[])
         LOG("failed to initialize dbus/systemd, power key will not start stop XBMC\n");
     }
 
+#ifdef HAVE_LIBBCM_HOST
+    /* initialise all the Broadcom VideoCore stuff */
+    vc_tvservice_init();
+#endif
+
     /* start reading from the interrupt endpoint input */
     while(1) {
         ret = libusb_interrupt_transfer(source.handle, source.input_ep, buf, source.input_psize, &len, 1800);
@@ -133,6 +143,12 @@ int main(int argc, char *argv[])
     }
 
     close_input_device(ufd);
+
+#ifdef HAVE_LIBBCM_HOST
+    /* close VideoCore stuff */
+    vc_tvservice_stop();
+#endif
+
     return 0;
 }
 
@@ -308,6 +324,9 @@ int map_to_uinput(int fd, int modifier, int keycode)
                 LOG("failed to stop XBMC\n");
                 return -1;
             }
+#ifdef HAVE_LIBBCM_HOST
+            vc_tvservice_poweroff();
+#endif
             xbmc_status = 0;
         } else {
             LOG("starting XBMC\n");
@@ -315,6 +334,9 @@ int map_to_uinput(int fd, int modifier, int keycode)
                 LOG("failed to start XBMC\n");
                 return -1;
             }
+#ifdef HAVE_LIBBCM_HOST
+            vc_tvservice_poweron();
+#endif
             xbmc_status = 1;
         }
         return 0;

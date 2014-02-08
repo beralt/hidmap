@@ -42,9 +42,12 @@ int systemd_xbmc_init(void)
 
     if(dbus_error_is_set(&err)) {
         fprintf(stderr, "failed to get systemd unit: %s\n", err.message);
+        dbus_message_unref(msg);
         return -1;
     }
 
+    dbus_message_unref(msg);
+    dbus_message_unref(response);
     return 0;
 }
 
@@ -68,10 +71,13 @@ int systemd_xbmc_start(void)
     response = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
     
     if(dbus_error_is_set(&err)) {
+        dbus_message_unref(msg);
         fprintf(stderr, "failed to start xbmc: %s\n", err.message);
         return -1;
     }
 
+    dbus_message_unref(msg);
+    dbus_message_unref(response);
     return 0;
 }
 
@@ -95,9 +101,12 @@ int systemd_xbmc_stop(void)
     response = dbus_connection_send_with_reply_and_block(conn, msg, -1, &err);
     
     if(dbus_error_is_set(&err)) {
+        dbus_message_unref(msg);
         fprintf(stderr, "failed to stop xbmc: %s\n", err.message);
         return -1;
     }
 
+    dbus_message_unref(msg);
+    dbus_message_unref(response);
     return 0;
 }
