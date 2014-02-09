@@ -1,3 +1,14 @@
+#include <stdio.h>
+
+#include "config.h"
+
+#define DEBUG
+#ifdef DEBUG
+#define LOG(...) fprintf(stderr, __VA_ARGS__)
+#else
+#define LOG(...) do {} while (0)
+#endif
+
 #ifdef HAVE_LIBBCM_HOST
 /**
  * Based on the RPi userland app named
@@ -16,17 +27,17 @@ int vc_tvservice_init()
 
     vcos_init();
 
-    if((res = vchi_initialise(&vhci_instance)) != 0) {
-        LOG("failed to initialize VHCI\n");
+    if((res = vchi_initialise(&vchi_instance)) != 0) {
+        LOG("failed to initialize VCHI\n");
         return -1;
     }
 
     if((res = vchi_connect(NULL, 0, vchi_instance)) != 0) {
-        LOG("failed to connect to VHCI\n");
+        LOG("failed to connect to VCHI\n");
         return -1;
     }
 
-    vc_vchi_tv_init(vhci_instance, &vhci_connection, 1);
+    vc_vchi_tv_init(vchi_instance, &vchi_connection, 1);
 }
 
 void vc_tvservice_stop()

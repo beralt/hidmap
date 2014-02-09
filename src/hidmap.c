@@ -21,6 +21,7 @@
 #include <errno.h>
 #include <string.h>
 
+#include "config.h"
 #include "hidmap.h"
 #include "keymap.h"
 #include "systemd_xbmc.h" // in order to stop/start xbmc
@@ -329,14 +330,14 @@ int map_to_uinput(int fd, int modifier, int keycode)
 #endif
             xbmc_status = 0;
         } else {
+#ifdef HAVE_LIBBCM_HOST
+            vc_tvservice_poweron();
+#endif
             LOG("starting XBMC\n");
             if(systemd_xbmc_start() < 0) {
                 LOG("failed to start XBMC\n");
                 return -1;
             }
-#ifdef HAVE_LIBBCM_HOST
-            vc_tvservice_poweron();
-#endif
             xbmc_status = 1;
         }
         return 0;

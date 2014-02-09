@@ -11,12 +11,12 @@ AC_HEADER_STDC
 PKG_CHECK_MODULES([LIBUSB], [libusb-1.0 >= 1.0.0])
 PKG_CHECK_MODULES([DBUS], [dbus-1 >= 1.0.0])
 
-oldCFLAGS="$CFLAGS"
-RPI_VC_CFLAGS="-I/opt/vc/include"
-CFLAGS="$CFLAGS $RPI_VC_CFLAGS"
+oldCPPFLAGS="$CPPFLAGS"
+RPI_VC_CPPFLAGS="-I/opt/vc/include -I/opt/vc/include/interface/vcos/pthreads -I/opt/vc/include/interface/vmcs_host/linux -DUSE_VCHIQ_ARM"
+CPPFLAGS="$CPPFLAGS $RPI_VC_CPPFLAGS"
 AC_CHECK_HEADER([bcm_host.h], [], [AC_MSG_WARN([Broadcom VideoCore headers not found in /opt/vc/include])])
-AC_SUBST(RPI_VC_CFLAGS, $RPI_VC_CFLAGS)
-CFLAGS="$oldCFLAGS"
+AC_SUBST(RPI_VC_CPPFLAGS, $RPI_VC_CPPFLAGS)
+CPPFLAGS="$oldCPPFLAGS"
 
 oldLDFLAGS="$LDFLAGS"
 RPI_VC_LIBS="-L/opt/vc/lib"
