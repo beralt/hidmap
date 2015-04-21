@@ -24,7 +24,7 @@
 #include "config.h"
 #include "hidmap.h"
 #include "keymap.h"
-#include "systemd_xbmc.h" // in order to stop/start xbmc
+#include "systemd_kodi.h" // in order to stop/start kodi
 
 /* optional stuff for turning HDMI link on/off */
 #ifdef HAVE_LIBBCM_HOST
@@ -41,11 +41,11 @@
 #define LOG(...) do {} while (0)
 #endif
 
-#define FIX_XBMC // use this to fix 20 key min bug in XBMC
+#define FIX_KODI // use this to fix 20 key min bug in KODI
 
 /* globals */
 int last_key_pressed = 0;
-int xbmc_status = 0; // start with xbmc off
+int kodi_status = 0; // start with kodi off
 
 /* needed to find the device using udev */
 int open_source_device(usbhiddev_t *dev);
@@ -125,8 +125,8 @@ int main(int argc, char *argv[])
     }
 
     /* init dbus stuff */
-    if((ret = systemd_xbmc_init()) < 0) {
-        LOG("failed to initialize dbus/systemd, power key will not start stop XBMC\n");
+    if((ret = systemd_kodi_init()) < 0) {
+        LOG("failed to initialize dbus/systemd, power key will not start stop KODI\n");
     }
 
 #ifdef HAVE_LIBBCM_HOST
@@ -249,7 +249,7 @@ int create_input_device(void)
         return -1;
     }
 
-#ifdef FIX_XBMC
+#ifdef FIX_KODI
     for(i = 0; i < KEY_MAX; ++i)
         ret = ioctl(fd, UI_SET_KEYBIT, i);
 #else
@@ -318,27 +318,27 @@ int map_to_uinput(int fd, int modifier, int keycode)
 
     /* some keycodes are trapped here (i.e. the power button) */
     if(keycode == 0x3f && modifier == 0x5) {
-        /* start/stop XBMC */
-        if(xbmc_status > 0) {
-            LOG("stopping XBMC\n");
-            if(systemd_xbmc_stop() < 0) {
-                LOG("failed to stop XBMC\n");
+        /* start/stop KODI */
+        if(kodi_status > 0) {
+            LOG("stopping KODI\n");
+            if(systemd_kodi_stop() < 0) {
+                LOG("failed to stop KODI\n");
                 return -1;
             }
 #ifdef HAVE_LIBBCM_HOST
             vc_tvservice_poweroff();
 #endif
-            xbmc_status = 0;
+            kodi_status = 0;
         } else {
 #ifdef HAVE_LIBBCM_HOST
             vc_tvservice_poweron();
 #endif
-            LOG("starting XBMC\n");
-            if(systemd_xbmc_start() < 0) {
-                LOG("failed to start XBMC\n");
+            LOG("starting KODI\n");
+            if(systemd_kodi_start() < 0) {
+                LOG("failed to start KODI\n");
                 return -1;
             }
-            xbmc_status = 1;
+            kodi_status = 1;
         }
         return 0;
     }

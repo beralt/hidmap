@@ -1,21 +1,20 @@
 /**
- * Start and stop XBMC through systemd/dbus
+ * Start and stop Kodi through systemd/dbus
  */
 
 #include <stdio.h>
 
 /* dbus stuff */
 #include "dbus/dbus.h"
-
-#include "systemd_xbmc.h"
+#include "systemd_kodi.h"
 
 DBusConnection *conn;
 
-int systemd_xbmc_init(void)
+int systemd_kodi_init(void)
 {
     DBusMessage *msg, *response;
     DBusError err;
-    const char *unit_name = "xbmc.service";
+    const char *unit_name = "kodi.service";
     const char *unit_mode = "replace";
 
     dbus_error_init(&err);
@@ -51,14 +50,14 @@ int systemd_xbmc_init(void)
     return 0;
 }
 
-int systemd_xbmc_start(void)
+int systemd_kodi_start(void)
 {
     DBusMessage *msg, *response;
     DBusError err;
 
     dbus_error_init(&err);
 
-    const char *unit_name = "xbmc.service";
+    const char *unit_name = "kodi.service";
     const char *unit_mode = "replace";
 
     msg = dbus_message_new_method_call("org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "StartUnit");
@@ -72,7 +71,7 @@ int systemd_xbmc_start(void)
     
     if(dbus_error_is_set(&err)) {
         dbus_message_unref(msg);
-        fprintf(stderr, "failed to start xbmc: %s\n", err.message);
+        fprintf(stderr, "failed to start kodi: %s\n", err.message);
         return -1;
     }
 
@@ -81,14 +80,14 @@ int systemd_xbmc_start(void)
     return 0;
 }
 
-int systemd_xbmc_stop(void)
+int systemd_kodi_stop(void)
 {
     DBusMessage *msg, *response;
     DBusError err;
 
     dbus_error_init(&err);
 
-    const char *unit_name = "xbmc.service";
+    const char *unit_name = "kodi.service";
     const char *unit_mode = "replace";
 
     msg = dbus_message_new_method_call("org.freedesktop.systemd1", "/org/freedesktop/systemd1", "org.freedesktop.systemd1.Manager", "StopUnit");
@@ -102,7 +101,7 @@ int systemd_xbmc_stop(void)
     
     if(dbus_error_is_set(&err)) {
         dbus_message_unref(msg);
-        fprintf(stderr, "failed to stop xbmc: %s\n", err.message);
+        fprintf(stderr, "failed to stop kodi: %s\n", err.message);
         return -1;
     }
 
