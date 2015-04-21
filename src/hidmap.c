@@ -136,7 +136,7 @@ int main(int argc, char *argv[])
 
     /* start reading from the interrupt endpoint input */
     while(1) {
-        ret = libusb_interrupt_transfer(source.handle, source.input_ep, buf, source.input_psize, &len, 1800);
+        ret = libusb_interrupt_transfer(source.handle, source.input_ep, buf, source.input_psize, &len, 0);
         if(ret != 0)
             LOG("failed to read input interrupt endpoint: %s\n", libusb_error_name(ret));
         else
