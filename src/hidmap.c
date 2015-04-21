@@ -112,9 +112,14 @@ int main(int argc, char *argv[])
     libusb_init(NULL);
     memset(buf, 0x0, sizeof(buf));
 
-    if((ret = open_source_device(&source)) < 0) {
-        LOG("failed to open source device: %s\n", libusb_error_name(ret));
-        return 1;
+    while(1) {
+      if((ret = open_source_device(&source)) < 0) {
+          LOG("failed to open source device: %s (waiting for device)\n", libusb_error_name(ret));
+      } else {
+        LOG("Opened source device");
+        break;
+      }
+      sleep(10);
     }
 
     /* setup uinput */
